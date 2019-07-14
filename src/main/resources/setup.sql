@@ -1,0 +1,17 @@
+CREATE TABLE MEETUP_EVENT (
+  id BIGINT PRIMARY KEY,
+  event_name VARCHAR(100) NOT NULL,
+  start_time TIMESTAMP NOT NULL,
+  capacity INT NOT NULL
+);
+
+CREATE TABLE USER_SUBSCRIPTION (
+  user_id VARCHAR(100),
+  meetup_event_id BIGINT REFERENCES MEETUP_EVENT(id),
+  registration_time TIMESTAMP NOT NULL,
+  waiting_list BOOLEAN NOT NULL,
+  PRIMARY KEY (user_id, meetup_event_id)
+);
+
+CREATE SEQUENCE MEETUP_EVENT_ID_SEQ;
+
