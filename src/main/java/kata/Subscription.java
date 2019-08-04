@@ -1,6 +1,7 @@
 package kata;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public class Subscription {
 
@@ -26,5 +27,29 @@ public class Subscription {
 
     public boolean isInWaitingList() {
         return isInWaitingList;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Subscription that = (Subscription) o;
+        return isInWaitingList == that.isInWaitingList &&
+                Objects.equals(userId, that.userId) &&
+                Objects.equals(registrationTime, that.registrationTime);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(userId, registrationTime, isInWaitingList);
+    }
+
+    @Override
+    public String toString() {
+        return "Subscription{" +
+                "userId='" + userId + '\'' +
+                ", registrationTime=" + registrationTime +
+                ", isInWaitingList=" + isInWaitingList +
+                '}';
     }
 }
