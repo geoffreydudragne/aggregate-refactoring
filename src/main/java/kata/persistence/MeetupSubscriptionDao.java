@@ -1,116 +1,74 @@
 package kata.persistence;
 
+import kata.MeetupEvent;
 import kata.Subscription;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.mapper.RowMapper;
 
-import java.time.Instant;
 import java.util.List;
-
-import static kata.persistence.JdbiMapperHelper.mapTo;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class MeetupSubscriptionDao {
 
     private final Jdbi jdbi;
 
+    private final MeetupEventRepository meetupEventRepository;
+
     public MeetupSubscriptionDao(Jdbi jdbi) {
         this.jdbi = jdbi;
+        meetupEventRepository = new MeetupEventRepository(jdbi);
     }
 
-    private static final RowMapper<Subscription> SUBSCRIPTION_ROW_MAPPER = (rs, ctx) ->
-            new Subscription(
-                    rs.getString("user_id"),
-                    mapTo(rs, "registration_time", Instant.class, ctx),
-                    rs.getBoolean("waiting_list")
-            );
-
     public void addToSubscriptions(Subscription subscribtion, Long meetupEventId) {
-        String sql = "" +
-                "INSERT INTO USER_SUBSCRIPTION (user_id, meetup_event_id, registration_time, waiting_list) " +
-                "VALUES (:userId, :meetupEventId, :registrationTime, :waitingList)";
-
-        jdbi.useHandle(handle -> handle.createUpdate(sql)
-                .bind("userId", subscribtion.getUserId())
-                .bind("meetupEventId", meetupEventId)
-                .bind("registrationTime", subscribtion.getRegistrationTime())
-                .bind("waitingList", subscribtion.isInWaitingList())
-                .execute());
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        meetupEvent.getSubscriptions().add(subscribtion);
+        meetupEventRepository.save(meetupEvent);
     }
 
     public void deleteSubscription(String userId, Long meetupEventId) {
-        String sql = "" +
-                "DELETE FROM USER_SUBSCRIPTION " +
-                "WHERE meetup_event_id = :meetupEventId " +
-                "AND user_id = :userId";
-
-        jdbi.useHandle(handle -> handle.createUpdate(sql)
-                .bind("meetupEventId", meetupEventId)
-                .bind("userId", userId)
-                .execute());
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        meetupEvent.getSubscriptions().removeIf(subscription -> subscription.getUserId().equals(userId));
+        meetupEventRepository.save(meetupEvent);
     }
 
     public void changeFromWaitingListToParticipants(String userId, Long meetupEventId) {
-        String sql = "" +
-                "UPDATE USER_SUBSCRIPTION " +
-                "SET waiting_list = FALSE " +
-                "WHERE meetup_event_id = :meetupEventId " +
-                "AND user_id = :userId";
-
-        jdbi.useHandle(handle -> handle.createUpdate(sql)
-                .bind("meetupEventId", meetupEventId)
-                .bind("userId", userId)
-                .execute());
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        Subscription subscription1 = meetupEvent.getSubscriptions().stream()
+                .filter(subscription -> subscription.getUserId().equals(userId))
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("No user"));
+        meetupEvent.getSubscriptions().remove(subscription1);
+        meetupEvent.getSubscriptions().add(subscription1.toParticipant());
+        meetupEventRepository.save(meetupEvent);
     }
 
     public List<Subscription> findSubscriptionsParticipants(Long meetupEventId) {
-        String sql = "" +
-                "SELECT * FROM USER_SUBSCRIPTION " +
-                "WHERE meetup_event_id = :meetupEventId " +
-                "AND waiting_list IS FALSE " +
-                "ORDER BY registration_time ASC";
-
-        return jdbi.withHandle(handle -> handle.createQuery(sql)
-                .bind("meetupEventId", meetupEventId)
-                .map(SUBSCRIPTION_ROW_MAPPER)
-                .list());
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        return meetupEvent.getSubscriptions().stream()
+                .filter(subscription -> !subscription.isInWaitingList())
+                .collect(Collectors.toList());
     }
 
     public List<Subscription> findSubscriptionsInWaitingList(Long meetupEventId) {
-        String sql = "" +
-                "SELECT * FROM USER_SUBSCRIPTION " +
-                "WHERE meetup_event_id = :meetupEventId " +
-                "AND waiting_list IS TRUE " +
-                "ORDER BY registration_time ASC";
-
-        return jdbi.withHandle(handle -> handle.createQuery(sql)
-                .bind("meetupEventId", meetupEventId)
-                .map(SUBSCRIPTION_ROW_MAPPER)
-                .list());
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        return meetupEvent.getSubscriptions().stream()
+                .filter(Subscription::isInWaitingList)
+                .collect(Collectors.toList());
     }
 
     public Boolean isUserSubscriptionInWaitingList(String userId, Long meetupEventId) {
-        String sql = "" +
-                "SELECT waiting_list FROM USER_SUBSCRIPTION " +
-                "WHERE meetup_event_id = :meetupEventId " +
-                "AND user_id = :userId";
-
-        return jdbi.withHandle(handle -> handle.createQuery(sql)
-                .bind("meetupEventId", meetupEventId)
-                .bind("userId", userId)
-                .mapTo(Boolean.class)
-                .one());
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        Optional<Subscription> subscription = meetupEvent.getSubscriptions().stream()
+                .filter(sub -> sub.getUserId().equals(userId))
+                .findAny();
+        return subscription.filter(Subscription::isInWaitingList).isPresent();
     }
 
     public Subscription findById(String userId, Long meetupEventId) {
-        String sql = "" +
-                "SELECT * FROM USER_SUBSCRIPTION " +
-                "WHERE meetup_event_id = :meetupEventId " +
-                "AND user_id = :userId";
-
-        return jdbi.withHandle(handle -> handle.createQuery(sql)
-                .bind("meetupEventId", meetupEventId)
-                .bind("userId", userId)
-                .map(SUBSCRIPTION_ROW_MAPPER)
-                .findOne().orElse(null));
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        Optional<Subscription> subscription = meetupEvent.getSubscriptions().stream()
+                .filter(sub -> sub.getUserId().equals(userId))
+                .findAny();
+        return subscription.orElse(null);
     }
 }

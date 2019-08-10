@@ -29,6 +29,10 @@ public class Subscription {
         return isInWaitingList;
     }
 
+    public Subscription toParticipant() {
+        return new Subscription(userId, registrationTime, false);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

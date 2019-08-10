@@ -7,7 +7,7 @@ import java.util.List;
 public class MeetupEvent {
 
     private final Long id;
-    private final int capacity;
+    private int capacity;
     private final String eventName;
     private final LocalDateTime startTime;
     private List<Subscription> subscriptions;
@@ -42,5 +42,9 @@ public class MeetupEvent {
 
     public List<Subscription> getSubscriptions() {
         return subscriptions;
+    }
+
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
     }
 }
