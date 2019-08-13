@@ -3,7 +3,6 @@ package kata;
 import kata.persistence.MeetupEventDao;
 import kata.persistence.MeetupEventRepository;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,44 +27,19 @@ public class MeetupSubscribe {
 
     public void subscribeUserToMeetupEvent(String userId, Long meetupEventId) {
         MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
-        if (meetupEvent.getSubscription(userId) != null) {
-            throw new RuntimeException(String.format("User %s already has a subscription", userId));
-        }
-
-        List<Subscription> participants = meetupEvent.getParticipants();
-        boolean addToWaitingList = participants.size() == meetupEvent.getCapacity();
-        Subscription subscription = new Subscription(userId, Instant.now(), addToWaitingList);
-        meetupEvent.addToSubscriptions(subscription);
+        meetupEvent.subscribeUser(userId);
         meetupEventRepository.save(meetupEvent);
     }
 
     public void cancelUserSubscription(String userId, Long meetupEventId) {
         MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
-        Boolean inWaitingList = meetupEvent.isUserSubscriptionInWaitingList(userId);
-        meetupEvent.deleteSubscription(userId);
-
-        if (!inWaitingList) {
-            List<Subscription> waitingList = meetupEvent.getWaitingList();
-            if (!waitingList.isEmpty()) {
-                Subscription firstInWaitingList = waitingList.get(0);
-                meetupEvent.changeFromWaitingListToParticipants(firstInWaitingList.getUserId());
-            }
-        }
+        meetupEvent.canceUserSubscription(userId);
         meetupEventRepository.save(meetupEvent);
     }
 
     public void increaseCapacity(Long meetupEventId, int newCapacity) {
         MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
-        int oldCapacity = meetupEvent.getCapacity();
-
-        if (oldCapacity < newCapacity) {
-            meetupEvent.setCapacity(newCapacity);
-            int newSlots = newCapacity - oldCapacity;
-            List<Subscription> waitingList = meetupEvent.getWaitingList();
-            waitingList.stream()
-                    .limit(newSlots)
-                    .forEach(subscription -> meetupEvent.changeFromWaitingListToParticipants(subscription.getUserId()));
-        }
+        meetupEvent.increaseCapacity(newCapacity);
         meetupEventRepository.save(meetupEvent);
     }
 

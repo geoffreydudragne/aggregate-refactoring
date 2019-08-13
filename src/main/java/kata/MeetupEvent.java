@@ -1,5 +1,6 @@
 package kata;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,5 +92,42 @@ public class MeetupEvent {
                 .filter(sub -> sub.getUserId().equals(userId))
                 .findAny();
         return subscription.orElse(null);
+    }
+
+    public void subscribeUser(String userId) {
+        if (getSubscription(userId) != null) {
+            throw new RuntimeException(String.format("User %s already has a subscription", userId));
+        }
+
+        List<Subscription> participants = getParticipants();
+        boolean addToWaitingList = participants.size() == getCapacity();
+        Subscription subscription = new Subscription(userId, Instant.now(), addToWaitingList);
+        addToSubscriptions(subscription);
+    }
+
+    public void canceUserSubscription(String userId) {
+        Boolean inWaitingList = isUserSubscriptionInWaitingList(userId);
+        deleteSubscription(userId);
+
+        if (!inWaitingList) {
+            List<Subscription> waitingList = getWaitingList();
+            if (!waitingList.isEmpty()) {
+                Subscription firstInWaitingList = waitingList.get(0);
+                changeFromWaitingListToParticipants(firstInWaitingList.getUserId());
+            }
+        }
+    }
+
+    public void increaseCapacity(int newCapacity) {
+        int oldCapacity = getCapacity();
+
+        if (oldCapacity < newCapacity) {
+            setCapacity(newCapacity);
+            int newSlots = newCapacity - oldCapacity;
+            List<Subscription> waitingList = getWaitingList();
+            waitingList.stream()
+                    .limit(newSlots)
+                    .forEach(subscription -> changeFromWaitingListToParticipants(subscription.getUserId()));
+        }
     }
 }
