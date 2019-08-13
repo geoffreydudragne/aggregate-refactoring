@@ -3,6 +3,8 @@ package kata;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class MeetupEvent {
 
@@ -46,5 +48,48 @@ public class MeetupEvent {
 
     public void setCapacity(int capacity) {
         this.capacity = capacity;
+    }
+
+    public List<Subscription> getParticipants() {
+        return getSubscriptions().stream()
+                .filter(subscription -> !subscription.isInWaitingList())
+                .collect(Collectors.toList());
+    }
+
+    public void changeFromWaitingListToParticipants(String userId) {
+        Subscription subscription1 = getSubscriptions().stream()
+                .filter(subscription -> subscription.getUserId().equals(userId))
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("No user"));
+        getSubscriptions().remove(subscription1);
+        getSubscriptions().add(subscription1.toParticipant());
+    }
+
+    public List<Subscription> getWaitingList() {
+        return getSubscriptions().stream()
+                .filter(Subscription::isInWaitingList)
+                .collect(Collectors.toList());
+    }
+
+    public void addToSubscriptions(Subscription subscribtion) {
+        getSubscriptions().add(subscribtion);
+    }
+
+    public void deleteSubscription(String userId) {
+        getSubscriptions().removeIf(subscription -> subscription.getUserId().equals(userId));
+    }
+
+    public boolean isUserSubscriptionInWaitingList(String userId) {
+        Optional<Subscription> subscription = getSubscriptions().stream()
+                .filter(sub -> sub.getUserId().equals(userId))
+                .findAny();
+        return subscription.filter(Subscription::isInWaitingList).isPresent();
+    }
+
+    public Subscription getSubscription(String userId) {
+        Optional<Subscription> subscription = getSubscriptions().stream()
+                .filter(sub -> sub.getUserId().equals(userId))
+                .findAny();
+        return subscription.orElse(null);
     }
 }
