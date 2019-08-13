@@ -27,38 +27,31 @@ public class MeetupSubscribe {
     }
 
     public void subscribeUserToMeetupEvent(String userId, Long meetupEventId) {
-        MeetupEvent meetupEvent1 = meetupEventRepository.findById(meetupEventId);
-        if (meetupEvent1.getSubscription(userId) != null) {
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        if (meetupEvent.getSubscription(userId) != null) {
             throw new RuntimeException(String.format("User %s already has a subscription", userId));
         }
 
-        MeetupEvent meetupEvent2 = meetupEventRepository.findById(meetupEventId);
-        List<Subscription> participants = meetupEvent2.getParticipants();
-        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        List<Subscription> participants = meetupEvent.getParticipants();
         boolean addToWaitingList = participants.size() == meetupEvent.getCapacity();
         Subscription subscription = new Subscription(userId, Instant.now(), addToWaitingList);
-        MeetupEvent meetupEvent3 = meetupEventRepository.findById(meetupEventId);
-        meetupEvent3.addToSubscriptions(subscription);
-        meetupEventRepository.save(meetupEvent3);
+        meetupEvent.addToSubscriptions(subscription);
+        meetupEventRepository.save(meetupEvent);
     }
 
     public void cancelUserSubscription(String userId, Long meetupEventId) {
-        MeetupEvent meetupEvent3 = meetupEventRepository.findById(meetupEventId);
-        Boolean inWaitingList = meetupEvent3.isUserSubscriptionInWaitingList(userId);
-        MeetupEvent meetupEvent2 = meetupEventRepository.findById(meetupEventId);
-        meetupEvent2.deleteSubscription(userId);
-        meetupEventRepository.save(meetupEvent2);
+        MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
+        Boolean inWaitingList = meetupEvent.isUserSubscriptionInWaitingList(userId);
+        meetupEvent.deleteSubscription(userId);
 
         if (!inWaitingList) {
-            MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
             List<Subscription> waitingList = meetupEvent.getWaitingList();
             if (!waitingList.isEmpty()) {
                 Subscription firstInWaitingList = waitingList.get(0);
-                MeetupEvent meetupEvent1 = meetupEventRepository.findById(meetupEventId);
-                meetupEvent1.changeFromWaitingListToParticipants(firstInWaitingList.getUserId());
-                meetupEventRepository.save(meetupEvent1);
+                meetupEvent.changeFromWaitingListToParticipants(firstInWaitingList.getUserId());
             }
         }
+        meetupEventRepository.save(meetupEvent);
     }
 
     public void increaseCapacity(Long meetupEventId, int newCapacity) {
@@ -66,28 +59,20 @@ public class MeetupSubscribe {
         int oldCapacity = meetupEvent.getCapacity();
 
         if (oldCapacity < newCapacity) {
-            MeetupEvent meetupEvent1 = meetupEventRepository.findById(meetupEventId);
-            meetupEvent1.setCapacity(newCapacity);
-            meetupEventRepository.save(meetupEvent1);
+            meetupEvent.setCapacity(newCapacity);
             int newSlots = newCapacity - oldCapacity;
-            MeetupEvent meetupEvent2 = meetupEventRepository.findById(meetupEventId);
-            List<Subscription> waitingList = meetupEvent2.getWaitingList();
+            List<Subscription> waitingList = meetupEvent.getWaitingList();
             waitingList.stream()
                     .limit(newSlots)
-                    .forEach(subscription -> {
-                        MeetupEvent meetupEvent3 = meetupEventRepository.findById(meetupEventId);
-                        meetupEvent3.changeFromWaitingListToParticipants(subscription.getUserId());
-                        meetupEventRepository.save(meetupEvent3);
-                    });
+                    .forEach(subscription -> meetupEvent.changeFromWaitingListToParticipants(subscription.getUserId()));
         }
+        meetupEventRepository.save(meetupEvent);
     }
 
     public MeetupEventStatusDto getMeetupEventStatus(Long meetupEventId) {
         MeetupEvent meetupEvent = meetupEventRepository.findById(meetupEventId);
-        MeetupEvent meetupEvent1 = meetupEventRepository.findById(meetupEventId);
-        List<Subscription> participants = meetupEvent1.getParticipants();
-        MeetupEvent meetupEvent2 = meetupEventRepository.findById(meetupEventId);
-        List<Subscription> waitingList = meetupEvent2.getWaitingList();
+        List<Subscription> participants = meetupEvent.getParticipants();
+        List<Subscription> waitingList = meetupEvent.getWaitingList();
 
         MeetupEventStatusDto meetupEventStatusDto = new MeetupEventStatusDto();
         meetupEventStatusDto.meetupId = meetupEvent.getId();
