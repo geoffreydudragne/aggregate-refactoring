@@ -1,6 +1,6 @@
 package kata;
 
-import kata.persistence.MeetupEventDao;
+import kata.persistence.IdGenerator;
 import kata.persistence.MeetupEventRepository;
 
 import java.time.LocalDateTime;
@@ -10,16 +10,16 @@ import static java.util.stream.Collectors.toList;
 
 public class MeetupSubscribe {
 
-    private final MeetupEventDao meetupEventDao;
+    private final IdGenerator idGenerator;
     private final MeetupEventRepository meetupEventRepository;
 
-    public MeetupSubscribe(MeetupEventDao meetupEventDao, MeetupEventRepository meetupEventRepository) {
-        this.meetupEventDao = meetupEventDao;
+    public MeetupSubscribe(IdGenerator idGenerator, MeetupEventRepository meetupEventRepository) {
+        this.idGenerator = idGenerator;
         this.meetupEventRepository = meetupEventRepository;
     }
 
     public Long registerMeetupEvent(String eventName, Integer eventCapacity, LocalDateTime startTime) {
-        long id = meetupEventDao.generateId();
+        long id = idGenerator.generateId();
         MeetupEvent meetupEvent = new MeetupEvent(id, eventCapacity, eventName, startTime);
         meetupEventRepository.save(meetupEvent);
         return id;

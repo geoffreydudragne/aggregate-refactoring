@@ -2,11 +2,11 @@ package kata.persistence;
 
 import org.jdbi.v3.core.Jdbi;
 
-public class MeetupEventDao {
+public class IdGenerator {
 
     private final Jdbi jdbi;
 
-    public MeetupEventDao(Jdbi jdbi) {
+    public IdGenerator(Jdbi jdbi) {
         this.jdbi = jdbi;
     }
 
