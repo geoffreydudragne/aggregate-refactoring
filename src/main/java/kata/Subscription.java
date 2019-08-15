@@ -5,11 +5,11 @@ import java.util.Objects;
 
 public class Subscription {
 
-    private String userId;
+    private final String userId;
 
-    private Instant registrationTime;
+    private final Instant registrationTime;
 
-    private boolean isInWaitingList;
+    private final boolean isInWaitingList;
 
     public Subscription(String userId, Instant registrationTime, boolean isInWaitingList) {
         this.userId = userId;
@@ -29,8 +29,12 @@ public class Subscription {
         return isInWaitingList;
     }
 
-    public Subscription toParticipant() {
+    Subscription toParticipant() {
         return new Subscription(userId, registrationTime, false);
+    }
+
+    boolean isParticipant() {
+        return !isInWaitingList();
     }
 
     @Override

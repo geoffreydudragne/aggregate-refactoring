@@ -47,48 +47,25 @@ public class MeetupEvent {
         return subscriptions;
     }
 
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
-    }
-
     public List<Subscription> getParticipants() {
-        return getSubscriptions().stream()
-                .filter(subscription -> !subscription.isInWaitingList())
+        return subscriptions.stream()
+                .filter(Subscription::isParticipant)
                 .collect(Collectors.toList());
     }
 
-    public void changeFromWaitingListToParticipants(String userId) {
-        Subscription subscription1 = getSubscriptions().stream()
-                .filter(subscription -> subscription.getUserId().equals(userId))
-                .findAny()
-                .orElseThrow(() -> new RuntimeException("No user"));
-        getSubscriptions().remove(subscription1);
-        getSubscriptions().add(subscription1.toParticipant());
+    private void changeFromWaitingListToParticipants(Subscription subscription) {
+        subscriptions.remove(subscription);
+        subscriptions.add(subscription.toParticipant());
     }
 
     public List<Subscription> getWaitingList() {
-        return getSubscriptions().stream()
+        return subscriptions.stream()
                 .filter(Subscription::isInWaitingList)
                 .collect(Collectors.toList());
     }
 
-    public void addToSubscriptions(Subscription subscribtion) {
-        getSubscriptions().add(subscribtion);
-    }
-
-    public void deleteSubscription(String userId) {
-        getSubscriptions().removeIf(subscription -> subscription.getUserId().equals(userId));
-    }
-
-    public boolean isUserSubscriptionInWaitingList(String userId) {
-        Optional<Subscription> subscription = getSubscriptions().stream()
-                .filter(sub -> sub.getUserId().equals(userId))
-                .findAny();
-        return subscription.filter(Subscription::isInWaitingList).isPresent();
-    }
-
     public Subscription getSubscription(String userId) {
-        Optional<Subscription> subscription = getSubscriptions().stream()
+        Optional<Subscription> subscription = subscriptions.stream()
                 .filter(sub -> sub.getUserId().equals(userId))
                 .findAny();
         return subscription.orElse(null);
@@ -100,34 +77,31 @@ public class MeetupEvent {
         }
 
         List<Subscription> participants = getParticipants();
-        boolean addToWaitingList = participants.size() == getCapacity();
+        boolean addToWaitingList = participants.size() == capacity;
         Subscription subscription = new Subscription(userId, Instant.now(), addToWaitingList);
-        addToSubscriptions(subscription);
+        subscriptions.add(subscription);
     }
 
     public void canceUserSubscription(String userId) {
-        Boolean inWaitingList = isUserSubscriptionInWaitingList(userId);
-        deleteSubscription(userId);
+        Subscription subscription = getSubscription(userId);
+        subscriptions.remove(subscription);
 
-        if (!inWaitingList) {
+        if (subscription.isParticipant()) {
             List<Subscription> waitingList = getWaitingList();
             if (!waitingList.isEmpty()) {
                 Subscription firstInWaitingList = waitingList.get(0);
-                changeFromWaitingListToParticipants(firstInWaitingList.getUserId());
+                changeFromWaitingListToParticipants(firstInWaitingList);
             }
         }
     }
 
     public void increaseCapacity(int newCapacity) {
-        int oldCapacity = getCapacity();
-
-        if (oldCapacity < newCapacity) {
-            setCapacity(newCapacity);
-            int newSlots = newCapacity - oldCapacity;
-            List<Subscription> waitingList = getWaitingList();
-            waitingList.stream()
+        if (capacity < newCapacity) {
+            int newSlots = newCapacity - capacity;
+            capacity = newCapacity;
+            getWaitingList().stream()
                     .limit(newSlots)
-                    .forEach(subscription -> changeFromWaitingListToParticipants(subscription.getUserId()));
+                    .forEach(this::changeFromWaitingListToParticipants);
         }
     }
 }
